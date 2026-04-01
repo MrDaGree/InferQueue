@@ -1,0 +1,35 @@
+{
+  "name": "batch-shim-dev",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "devbox",
+  "workspaceFolder": "/workspace",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "mtxr.sqltools",
+        "mtxr.sqltools-driver-pg",
+        "humao.rest-client"
+      ],
+      "settings": {
+        "go.toolsManagement.autoUpdate": true,
+        "go.useLanguageServer": true,
+        "editor.formatOnSave": true,
+        "[go]": {
+          "editor.defaultFormatter": "golang.go"
+        }
+      }
+    }
+  },
+
+  // Start Slurm daemons and verify they're up after the container is created.
+  "postCreateCommand": "bash /workspace/.devcontainer/init-slurm.sh",
+
+  "remoteUser": "root",
+
+  "forwardPorts": [8080],
+  "portsAttributes": {
+    "8080": { "label": "batch-shim API" }
+  }
+}

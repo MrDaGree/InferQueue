@@ -1,0 +1,55 @@
+version: "3.9"
+
+services:
+  devbox:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    hostname: devbox          # Slurm NodeName must match hostname — keep these in sync
+    volumes:
+      - ..:/workspace:cached  # mounts the repo root into /workspace
+      - slurm-data:/data
+    environment:
+      PORT: "8080"
+      DATABASE_DSN: "host=postgres user=batchshim password=batchshim dbname=batchshim port=5432 sslmode=disable"
+      FILE_STORE: "/data/files"
+      SLURM_LOG_DIR: "/data/slurm-logs"
+      SLURM_JOB_SCRIPT: "/workspace/slurm_templates/run_request.sh"
+      SLURM_PARTITION_SMALL:    "batch-high"
+      SLURM_PARTITION_NORMAL:   "batch-medium"
+      SLURM_PARTITION_LARGE:    "batch-medium"
+      SLURM_PARTITION_DEFERRED: "batch-low"
+      APISIX_URL: "http://localhost:9080"
+      BATCH_API_KEY: "dev-key"
+      VLLM_METRICS_MAP: "test-model=http://localhost:8000"
+      VLLM_MAX_RUNNING_REQUESTS: "999"   # disable backpressure in dev
+      VLLM_WAIT_TIMEOUT_SEC: "5"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: sleep infinity
+    networks:
+      - dev
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: batchshim
+      POSTGRES_PASSWORD: batchshim
+      POSTGRES_DB: batchshim
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U batchshim"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - dev
+
+volumes:
+  pg-data:
+  slurm-data:
+
+networks:
+  dev:

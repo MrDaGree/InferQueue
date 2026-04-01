@@ -1,0 +1,85 @@
+# batch-shim dev — REST Client test file
+# Install the "REST Client" VSCode extension (humao.rest-client) then click
+# "Send Request" above any ### block to run it.
+#
+# Run the shim first:  go run ./cmd/server
+# Run mock APIsix:     bash slurm_templates/mock-apisix.sh
+
+@base = http://localhost:8080
+@user = dev-user
+
+### Health check
+GET {{base}}/health
+
+### Upload a batch input file
+# @name upload
+POST {{base}}/v1/files
+X-User-Id: {{user}}
+Content-Type: multipart/form-data; boundary=----FormBoundary
+
+------FormBoundary
+Content-Disposition: form-data; name="purpose"
+
+batch
+------FormBoundary
+Content-Disposition: form-data; name="file"; filename="input.jsonl"
+Content-Type: application/jsonl
+
+{"custom_id":"req-1","method":"POST","url":"/v1/chat/completions","body":{"model":"test-model","messages":[{"role":"user","content":"Say hello"}]}}
+{"custom_id":"req-2","method":"POST","url":"/v1/chat/completions","body":{"model":"test-model","messages":[{"role":"user","content":"What is 2+2?"}]}}
+{"custom_id":"req-3","method":"POST","url":"/v1/chat/completions","body":{"model":"test-model","messages":[{"role":"user","content":"Write a haiku about Slurm"}]}}
+------FormBoundary--
+
+### List files
+GET {{base}}/v1/files?purpose=batch
+X-User-Id: {{user}}
+
+### Create a batch (24h window — batch-high partition, < 10 requests)
+# Replace FILE_ID with the id from the upload response above
+POST {{base}}/v1/batches
+X-User-Id: {{user}}
+Content-Type: application/json
+
+{
+  "input_file_id": "file-aaa360e4-f6e4-4e03-952c-4921ee8f4223",
+  "endpoint": "/v1/chat/completions",
+  "completion_window": "24h"
+}
+
+### Create a batch (48h window — batch-medium partition)
+POST {{base}}/v1/batches
+X-User-Id: {{user}}
+Content-Type: application/json
+
+{
+  "input_file_id": "file-aaa360e4-f6e4-4e03-952c-4921ee8f4223",
+  "endpoint": "/v1/chat/completions",
+  "completion_window": "48h"
+}
+
+### Create a batch (96h window — batch-low partition)
+POST {{base}}/v1/batches
+X-User-Id: {{user}}
+Content-Type: application/json
+
+{
+  "input_file_id": "file-aaa360e4-f6e4-4e03-952c-4921ee8f4223",
+  "endpoint": "/v1/chat/completions",
+  "completion_window": "96h"
+}
+
+### List batches
+GET {{base}}/v1/batches
+X-User-Id: {{user}}
+
+### Get a specific batch (replace BATCH_ID)
+GET {{base}}/v1/batches/batch_cc121084-3479-4d1a-9815-c8d00ab6dd91
+X-User-Id: {{user}}
+
+### Cancel a batch
+POST {{base}}/v1/batches/BATCH_ID/cancel
+X-User-Id: {{user}}
+
+### Get output file content (replace OUTPUT_FILE_ID from batch response)
+GET {{base}}/v1/files/file-aaa360e4-f6e4-4e03-952c-4921ee8f4223/content
+X-User-Id: {{user}}
